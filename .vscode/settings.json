@@ -1,0 +1,9 @@
+{
+    "terminal.integrated.cursorStyle": "line",
+    "terminal.integrated.fontFamily": "monospace",
+    "editor.wordWrap": "on",
+    "terminal.integrated.fontWeight": "bold",
+    "terminal.integrated.letterSpacing": 0,
+    "terminal.integrated.fontSize": 14,
+    "terminal.integrated.lineHeight": 1
+}
