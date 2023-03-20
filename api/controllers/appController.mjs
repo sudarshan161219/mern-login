@@ -175,7 +175,21 @@ const getUser = async (req, res) => {
 //?  -->  "profile": " "
 //?}
 const updateUser = async (req, res) => {
-  res.json("updateUser route");
+  try {
+    const { userId } = req.user;
+    if (userId) {
+      const body = req.body;
+      //$ update the data
+      UserModel.updateOne({ _id: userId }, body, (err, data) => {
+        if (err) throw err;
+        return res.status(201).send({ msg: "Doc Updated...!" });
+      });
+    } else {
+      return res.status(401).send({ err: "User Not Found...!" });
+    }
+  } catch (error) {
+    res.status(401).send({ error });
+  }
 };
 
 // * GET: http://localhost:8080/api/generateOTP //
