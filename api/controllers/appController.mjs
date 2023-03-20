@@ -1,5 +1,24 @@
 import UserModel from "../model/User.mjs";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import ENV from "../config.mjs";
+import User from "../model/User.mjs";
+
+//* middleware for verify user*//
+const verifyUser = async (req, res, next) => {
+  try {
+    const { username } = req.method == "GET" ? req.query : req.body;
+
+    //$ check user existance
+    let exist = await UserModel.findOne({ username });
+    if (!exist) {
+      return res.status(404).send({ err: "Can't find User!" });
+    }
+    next();
+  } catch (error) {
+    return res.status(404).send({ err: "Authentication Error" });
+  }
+};
 
 // * POST: http://localhost:8080/api/register //
 //? @param : {
@@ -75,16 +94,75 @@ const register = async (req, res) => {
 
 // * POST: http://localhost:8080/api/login //
 //? @param : {
-//?  -->  "username": example123,
-//?  -->  "password": admin@123,
+//?  -->  "username": "example123",
+//?  -->  "password": "admin@123",
 //?  }
 const login = async (req, res) => {
-  res.json("login route");
+  const { username, password } = req.body;
+
+  try {
+    UserModel.findOne({ username })
+      .then((user) => {
+        bcrypt
+          .compare(password, user.password)
+          .then((passwordCheck) => {
+            if (!passwordCheck) {
+              return res.status(400).send({ err: "Don't have password" });
+            }
+            //$ Create JWT Token
+            const token = jwt.sign(
+              {
+                userID: user._id,
+                username: user.username,
+              },
+              ENV.JWT_SECRET,
+              { expiresIn: "24h" }
+            );
+
+            return res.status(200).send({
+              msg: "Login Successful....!",
+              username: user.username,
+              JWTtoken: token,
+            });
+          })
+          .catch((err) => {
+            return res.status(400).send({ err: "password does not match" });
+          });
+      })
+      .catch((err) => {
+        return res.status(400).send({ err: "username not found" });
+      });
+  } catch (error) {
+    return res.status(500).send(error);
+  }
 };
 
 // * GET: http://localhost:8080/api/user/example123 //
 const getUser = async (req, res) => {
-  res.json("getUser route");
+  const { username } = req.params;
+
+  try {
+    if (!username) {
+      return res.status(501).send({ err: "Invalid username" });
+    }
+
+    UserModel.findOne({ username }, (err, user) => {
+      if (err) {
+        return res.status(500).send({ err });
+      }
+      if (!user) {
+        return res.status(501).send({ err: "Couldn't FInd the User" });
+      }
+
+      //** Remove password from user*/
+      //** mongoose return unnecesary data with object so convert it into json*/
+      const { password, ...rest } = Object.assign({}, user.toJSON());
+
+      return res.status(201).send(rest);
+    });
+  } catch (error) {
+    return res.status(404).send({ err: "Connot Find User Data" });
+  }
 };
 
 // * PUT: http://localhost:8080/api/updateuser
@@ -122,6 +200,7 @@ const resetPassword = async (req, res) => {
 };
 
 export {
+  verifyUser,
   register,
   login,
   getUser,
