@@ -2,7 +2,7 @@ import UserModel from "../model/User.mjs";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import ENV from "../config.mjs";
-import User from "../model/User.mjs";
+import otpGenerator from "otp-generator";
 
 //* middleware for verify user*//
 const verifyUser = async (req, res, next) => {
@@ -194,23 +194,70 @@ const updateUser = async (req, res) => {
 
 // * GET: http://localhost:8080/api/generateOTP //
 const generateOTP = async (req, res) => {
-  res.json("generateOTP route");
+  req.app.locals.OTP = await otpGenerator.generate(6, {
+    lowerCaseAlphabets: false,
+    upperCaseAlphabets: false,
+    specialChars: false,
+  });
+  res.status(201).send({ code: req.app.locals.OTP });
 };
 
 // * GET: http://localhost:8080/api/verifyOTP //
 const verifyOTP = async (req, res) => {
-  res.json("verifyOTP route");
+  const { code } = req.query;
+  if (parseInt(req.app.locals.OTP) === parseInt(code)) {
+    req.app.locals.OTP = null; //$ Reset the OTP value
+    req.app.locals.resetSession = true; //$ Start session for reset password
+    return res.status(201).send({ msg: "Verify Successfully!" });
+  }
+  return res.status(400).send({ err: "Invalid OTP" });
 };
 
 //? successfully redirect user when OTP is valid //
 // * GET: http://localhost:8080/api/createResetSession //
 const createResetSession = async (req, res) => {
-  res.json("createResetSession route");
+  if (req.app.locals.resetSession) {
+    req.app.locals.resetSession = false; //$ allow access to this route only once
+    return res.status(201).send({ msg: "access granted" });
+  }
+  return res.status(400).send({ err: "Session expired" });
 };
 
 // * PUT: http://localhost:8080/api/resetPassword //
 const resetPassword = async (req, res) => {
-  res.json("resetPassword route");
+  try {
+    if (!req.app.locals.resetSession)
+      return res.status(440).send({ err: "Session expired" });
+    const { username, password } = req.body;
+    try {
+      UserModel.findOne({ username })
+        .then((user) => {
+          bcrypt
+            .hash(password, 10)
+            .then((hashedpassword) => {
+              UserModel.updateOne(
+                { username: user.username },
+                { password: hashedpassword },
+                (err, data) => {
+                  if (err) throw err;
+                  req.app.locals.resetSession = false; //$ reset session
+                  return res.status(201).send({ msg: "Password Updated...!" });
+                }
+              );
+            })
+            .catch((err) => {
+              return res.status(500).send({ err: "Enable to hash password" });
+            });
+        })
+        .catch((err) => {
+          return res.status(404).send({ err: "Username not Found" });
+        });
+    } catch (error) {
+      return res.status(500).send({ error });
+    }
+  } catch (error) {
+    return res.status(401).send({ error });
+  }
 };
 
 export {
