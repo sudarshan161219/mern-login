@@ -1,7 +1,7 @@
 import axios from "axios";
 
 
-axios.defaults.baseURL = import.meta.env.BASE_URL
+axios.defaults.baseURL = "http://localhost:8080"
 //* Make API Requests //
 
 //* Authenticate function  //
