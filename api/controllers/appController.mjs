@@ -167,7 +167,7 @@ const getUser = async (req, res) => {
 
 // * PUT: http://localhost:8080/api/updateuser
 //? @param : {
-//?  -->  "id": <userId>,
+//?  -->  "header": <token>,
 //?  }
 //? body: {
 //?  -->  "firstname": " ",
